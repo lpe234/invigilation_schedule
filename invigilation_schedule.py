@@ -139,7 +139,7 @@ def solve(teachers: list[Teacher], subjects: list[Subject], rooms: list[Room]):
                 var_name = f'subject_{s.name}_room_{r.name}_teacher_{t.name}'
                 inv_schedule[(s.name, r.name, t.name)] = model.new_bool_var(var_name)
         for t in teachers:
-            var_name = f'teacher_{t.name}_date_{s.date}'
+            var_name = f'teacher_{t.name}_date_{s.date}_apm_{s.apm}'
             teacher_date[(t.name, s.date, s.apm)] = model.new_bool_var(var_name)
 
     # 2. 添加约束
