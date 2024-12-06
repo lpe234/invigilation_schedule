@@ -29,8 +29,24 @@ class Subject(object):
     def __init__(self, arr: ndarray[4]):
         self.code = arr[0]
         self.name = arr[1]
-        self.date = arr[2]
+        self.date = arr[2].date().strftime('%Y%m%d')
         self.time = arr[3]
+
+    @property
+    def apm(self):
+        """
+        判断下当前时间是 AM、PM
+        :return:
+        """
+        if '-' in self.time:
+            stime, etime = self.time.split('-')
+        else:
+            stime, etime = self.time.split('—')
+        if int(etime.split(':')[0]) < 13:
+            return 'AM'
+        if int(stime.split(':')[0]) > 13:
+            return 'PM'
+        raise Exception('time range error')
 
     def __str__(self):
         return f'S({self.code} {self.name} {self.date} {self.time})'
@@ -124,7 +140,7 @@ def solve(teachers: list[Teacher], subjects: list[Subject], rooms: list[Room]):
                 inv_schedule[(s.name, r.name, t.name)] = model.new_bool_var(var_name)
         for t in teachers:
             var_name = f'teacher_{t.name}_date_{s.date}'
-            teacher_date[(t.name, s.date)] = model.new_bool_var(var_name)
+            teacher_date[(t.name, s.date, s.apm)] = model.new_bool_var(var_name)
 
     # 2. 添加约束
     # 同一科目，同一个老师，最多只能出现一次
@@ -172,13 +188,13 @@ def solve(teachers: list[Teacher], subjects: list[Subject], rooms: list[Room]):
     for t in teachers:
         for s in subjects:
             model.add_bool_or([inv_schedule[(s.name, r.name, t.name)].Not() for r in rooms]).only_enforce_if(
-                teacher_date[(t.name, s.date)].Not())
+                teacher_date[(t.name, s.date, s.apm)].Not())
             model.add_bool_or([inv_schedule[(s.name, r.name, t.name)] for r in rooms]).only_enforce_if(
-                teacher_date[(t.name, s.date)])
+                teacher_date[(t.name, s.date, s.apm)])
 
     # 4. 定义目标函数
-    # 尽量不要分散排 -> 每个老师工作的日期date数量最少 -> 全部老师工作日期最少
-    model.minimize(sum(teacher_date[(t.name, s.date)] for s in subjects for t in teachers))
+    # 尽量不要分散排 -> 每个老师工作的日期(date+AM/PM)数量最少 -> 全部老师工作日期最少
+    model.minimize(sum(teacher_date[(t.name, s.date, s.apm)] for s in subjects for t in teachers))
 
     # 5. 添加求解器
     solver = cp_model.CpSolver()
